@@ -44,6 +44,11 @@ public class SmartDustRobotController : MonoBehaviour
     {
         targetPosition = position;
         useArrivalFacingDirection = false;
+
+        //Debug.Log(
+        //    $"[SmartDustRobot] Target Position = {targetPosition}",
+        //    this
+        //);
     }
 
 
@@ -124,6 +129,11 @@ public class SmartDustRobotController : MonoBehaviour
 
     private void MoveToTarget()
     {
+        //Debug.Log(
+        //    $"[SmartDustRobot] Current = {transform.position} / Target = {targetPosition}",
+        //    this
+        //);
+
         transform.position =
             Vector3.MoveTowards(
                 transform.position,

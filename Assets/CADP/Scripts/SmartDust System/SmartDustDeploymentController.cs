@@ -301,8 +301,6 @@ public class SmartDustDeploymentController : MonoBehaviour
     /// </summary>
     private Vector3 CalculateLockedObjectWorldCenter()
     {
-        // Lock-On 시스템이 연결되어 있지 않다면
-        // 잠긴 대상을 가져올 수 없다.
         if (scanLockOnSystem == null)
         {
             Debug.LogWarning(
@@ -313,23 +311,36 @@ public class SmartDustDeploymentController : MonoBehaviour
             return CalculatePlayerWorldCenter();
         }
 
-        // 현재 Lock-On된 대상 Transform을 가져온다.
         Transform lockedTarget =
             scanLockOnSystem.LockedTarget;
 
-        // 잠긴 대상이 없다면 Player 위치를 임시로 사용한다.
         if (lockedTarget == null)
         {
             return CalculatePlayerWorldCenter();
         }
 
-        // Locked Object의 로컬 좌표를
-        // 실제 월드 좌표로 변환한다.
-        //
-        // lockedObjectCoordinateOffset이 0, 0, 0이면
-        // lockedTarget의 위치가 그대로 WorldCenter가 된다.
-        return lockedTarget.position +
-       lockedObjectCoordinateOffset;
+        /*
+         * 모델의 Transform Pivot 대신
+         * 실제 Renderer가 차지하는 공간의 중심을 사용한다.
+         *
+         * 따라서 FBX Pivot이 아래쪽이나 옆쪽에 있어도
+         * Smart Dust 좌표 원점은 모델의 시각적 중심에 잡힌다.
+         */
+        Renderer targetRenderer =
+            lockedTarget.GetComponentInChildren<Renderer>();
+
+        Vector3 originPosition =
+            targetRenderer != null
+                ? targetRenderer.bounds.center
+                : lockedTarget.position;
+
+        /*
+         * Locked Object 모드의 XYZ 축은
+         * 오브젝트 회전에 영향을 받지 않고
+         * 항상 World 축을 사용한다.
+         */
+        return originPosition +
+               lockedObjectCoordinateOffset;
     }
 
     /// <summary>
