@@ -213,12 +213,20 @@ public class PhenomenonExecutor : MonoBehaviour
             this
         );
 
+        // 현상이 정상적으로 실행된 뒤
+        // Smart Dust 선택/UI 상태 초기화
         ExecutePhenomenon(
             selectedPhenomenon,
             center,
             radius,
             targets
         );
+
+        if (smartDustModeController != null)
+        {
+            smartDustModeController
+                .ResetAfterPhenomenonExecution();
+        }
     }
 
 

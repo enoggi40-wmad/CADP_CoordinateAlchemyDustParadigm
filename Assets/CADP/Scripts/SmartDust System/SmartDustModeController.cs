@@ -8,18 +8,23 @@ using UnityEngine.InputSystem;
 /// 로봇 목표 위치를 관리한다.
 ///
 /// 모드 OFF:
-/// - 로봇은 플레이어 기준 Standby Offset 위치를 계속 추적한다.
-/// - Smart Dust 구체는 숨긴다.
+/// - 로봇은 플레이어 기준 Standby Offset 위치를 추적한다.
+/// - Smart Dust 구체를 숨긴다.
+/// - Smart Dust 관련 UI를 숨긴다.
 ///
 /// 모드 ON:
-/// - 로봇은 DeploymentController의 WorldCenter를 계속 추적한다.
+/// - 로봇은 DeploymentController의 WorldCenter를 추적한다.
 /// - Smart Dust 구체를 표시한다.
+///
+/// UI 흐름:
+/// - 현상 미선택(None): SmartDustPanel 표시
+/// - 현상 선택: SmartDustPanel 숨김 / PhenomenonInfoUI 표시
 /// </summary>
 public class SmartDustModeController : MonoBehaviour
 {
     [Header("Controllers")]
 
-    [Tooltip("좌표 원점, 오프셋, 반경, WorldCenter를 관리하는 컨트롤러")]
+    [Tooltip("좌표 원점, 오프셋, 반경, 선택 현상을 관리하는 컨트롤러")]
     [SerializeField]
     private SmartDustDeploymentController deploymentController;
 
@@ -52,9 +57,13 @@ public class SmartDustModeController : MonoBehaviour
 
     [Header("UI")]
 
-    [Tooltip("Smart Dust 모드 UI 전체 패널")]
+    [Tooltip("좌표, 반경, 현상 선택 등을 표시하는 Smart Dust 설정 패널")]
     [SerializeField]
     private GameObject smartDustPanel;
+
+    [Tooltip("현상 선택 후 현상명, 현재 에너지, 예상 소비량을 표시하는 UI")]
+    [SerializeField]
+    private GameObject phenomenonInfoUI;
 
     [Tooltip("현상 선택 Dropdown")]
     [SerializeField]
@@ -102,11 +111,7 @@ public class SmartDustModeController : MonoBehaviour
 
         ApplyModeState();
 
-        /*
-         * 게임 시작 즉시 로봇 목표를 설정한다.
-         * 따라서 G를 누르지 않아도 처음부터
-         * 플레이어 기준 Standby Offset 위치를 따라간다.
-         */
+        // 게임 시작 즉시 로봇 목표 위치 설정
         UpdateRobotTarget();
     }
 
@@ -116,14 +121,8 @@ public class SmartDustModeController : MonoBehaviour
         HandleInput();
 
         /*
-         * 모드 상태와 상관없이 매 프레임 목표 위치를 갱신한다.
-         *
-         * 모드 OFF:
-         * 플레이어가 움직이면 Standby 위치도 함께 움직인다.
-         *
-         * 모드 ON:
-         * Player 또는 Locked Object가 움직이면
-         * WorldCenter도 함께 갱신된다.
+         * 모드 상태와 관계없이 로봇의 목표 위치는
+         * 계속 갱신한다.
          */
         UpdateCameraControl();
         UpdateRobotTarget();
@@ -131,7 +130,7 @@ public class SmartDustModeController : MonoBehaviour
 
 
     /// <summary>
-    /// Smart Dust 관련 입력을 처리한다.
+    /// Smart Dust 관련 입력 처리.
     /// </summary>
     private void HandleInput()
     {
@@ -140,12 +139,10 @@ public class SmartDustModeController : MonoBehaviour
 
         if (Keyboard.current[toggleModeKey].wasPressedThisFrame)
         {
-            SetSmartDustMode(
-                !isSmartDustModeActive
-            );
+            HandleSmartDustToggle();
         }
 
-        // Origin 전환은 Smart Dust 모드 중에만 허용한다.
+        // Origin 변경은 Smart Dust 모드에서만 가능
         if (!isSmartDustModeActive)
             return;
 
@@ -155,17 +152,98 @@ public class SmartDustModeController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// G키 입력 처리
+    ///
+    /// OFF
+    /// → Smart Dust ON
+    ///
+    /// SmartDustPanel
+    /// → Smart Dust OFF
+    ///
+    /// PhenomenonInfoUI
+    /// → SmartDustPanel 복귀
+    /// </summary>
+    private void HandleSmartDustToggle()
+    {
+        // Smart Dust 모드 OFF → ON
+        if (!isSmartDustModeActive)
+        {
+            SetSmartDustMode(true);
+            return;
+        }
+
+        /*
+         * 현재 PhenomenonInfoUI가 실제로 열려 있으면
+         * SmartDustPanel로 돌아간다.
+         */
+        bool isPhenomenonInfoOpen =
+            phenomenonInfoUI != null &&
+            phenomenonInfoUI.activeSelf;
+
+        if (isPhenomenonInfoOpen)
+        {
+            ReturnToPhenomenonSelection();
+            return;
+        }
+
+        /*
+         * 이미 SmartDustPanel 화면이라면
+         * G를 다시 눌렀을 때 Smart Dust 모드 종료.
+         */
+        SetSmartDustMode(false);
+    }
 
     /// <summary>
-    /// Smart Dust 모드를 설정한다.
+    /// 현상 실행이 끝난 뒤
+    /// Smart Dust UI와 현상 선택 상태를 초기화한다.
+    ///
+    /// 다음에 G를 눌렀을 때
+    /// SmartDustPanel부터 시작하도록 한다.
     /// </summary>
-    private void SetSmartDustMode(bool active)
+    public void ResetAfterPhenomenonExecution()
     {
-        isSmartDustModeActive = active;
+        if (deploymentController != null)
+        {
+            deploymentController.SetSelectedPhenomenon(
+                PhenomenonType.None
+            );
+        }
+
+        if (phenomenonDropdown != null)
+        {
+            phenomenonDropdown.SetValueWithoutNotify(
+                (int)PhenomenonType.None
+            );
+
+            phenomenonDropdown.RefreshShownValue();
+        }
+
+        // Smart Dust 모드 자체를 종료
+        isSmartDustModeActive = false;
 
         ApplyModeState();
 
-        // 모드 변경 직후 목표 위치를 즉시 갱신한다.
+        UpdateRobotTarget();
+
+        Debug.Log(
+            "[Smart Dust] 현상 실행 완료 → 상태 초기화",
+            this
+        );
+    }
+
+
+    /// <summary>
+    /// Smart Dust 모드 활성 상태 변경.
+    /// </summary>
+    private void SetSmartDustMode(
+        bool active)
+    {
+        isSmartDustModeActive =
+            active;
+
+        ApplyModeState();
+
         UpdateRobotTarget();
 
         Debug.Log(
@@ -178,7 +256,8 @@ public class SmartDustModeController : MonoBehaviour
 
 
     /// <summary>
-    /// 현재 모드 상태를 UI, 카메라, 커서, 구체에 적용한다.
+    /// 현재 Smart Dust 모드 상태를
+    /// 카메라, UI, 커서, 구체에 적용한다.
     /// </summary>
     private void ApplyModeState()
     {
@@ -201,8 +280,7 @@ public class SmartDustModeController : MonoBehaviour
 
 
     /// <summary>
-    /// 현재 모드와 Origin에 맞는 목표 위치를
-    /// 로봇에게 매 프레임 전달한다.
+    /// 현재 상태에 맞는 로봇 목표 위치를 갱신한다.
     /// </summary>
     private void UpdateRobotTarget()
     {
@@ -214,7 +292,6 @@ public class SmartDustModeController : MonoBehaviour
         }
 
         // Smart Dust 모드 OFF
-        // 로봇은 플레이어의 대기 위치로 복귀한다.
         if (!isSmartDustModeActive)
         {
             Vector3 standbyWorldPosition =
@@ -231,15 +308,14 @@ public class SmartDustModeController : MonoBehaviour
         }
 
         // Smart Dust 모드 ON
-        // Player Origin과 Locked Object Origin 모두
-        // DeploymentController의 WorldCenter를 사용한다.
         smartDustRobot.SetTargetPosition(
             deploymentController.WorldCenter
         );
     }
 
+
     /// <summary>
-    /// Player Origin과 Locked Object Origin을 전환한다.
+    /// Player / Locked Object Origin 전환.
     /// </summary>
     private void ToggleOriginMode()
     {
@@ -260,42 +336,40 @@ public class SmartDustModeController : MonoBehaviour
 
         RefreshOriginText();
 
-        // Origin 변경 직후 새 WorldCenter 적용
         UpdateRobotTarget();
     }
 
 
     /// <summary>
-    /// Smart Dust 모드에 따라 카메라 회전을 설정한다.
+    /// 카메라 회전 상태 설정.
     /// </summary>
-    private void SetCameraState(bool active)
+    private void SetCameraState(
+        bool active)
     {
         if (cameraController == null)
             return;
 
-        // Smart Dust 모드 진입 시 우선 회전 차단
-        // 이후 UpdateCameraControl()이 우클릭 상태를 계속 확인한다.
         cameraController.SetRotationEnabled(
             !active
         );
     }
 
+
     /// <summary>
-    /// 일반 모드에서는 항상 카메라 회전 가능.
-    ///
     /// Smart Dust 모드에서는
-    /// 마우스 오른쪽 버튼을 누르는 동안에만
-    /// 카메라 회전을 허용한다.
+    /// RMB를 누르는 동안만 카메라 회전 가능.
     /// </summary>
     private void UpdateCameraControl()
     {
         if (cameraController == null)
             return;
 
-        // 일반 모드
         if (!isSmartDustModeActive)
         {
-            cameraController.SetRotationEnabled(true);
+            cameraController.SetRotationEnabled(
+                true
+            );
+
             return;
         }
 
@@ -309,26 +383,93 @@ public class SmartDustModeController : MonoBehaviour
 
         if (isRightMousePressed)
         {
-            Cursor.lockState = CursorLockMode.Locked;
-            Cursor.visible = false;
+            Cursor.lockState =
+                CursorLockMode.Locked;
+
+            Cursor.visible =
+                false;
         }
         else
         {
-            Cursor.lockState = CursorLockMode.None;
-            Cursor.visible = true;
+            Cursor.lockState =
+                CursorLockMode.None;
+
+            Cursor.visible =
+                true;
         }
     }
 
 
     /// <summary>
-    /// Smart Dust UI를 표시하거나 숨긴다.
+    /// 현재 Smart Dust 모드와
+    /// 현상 선택 상태를 기준으로 UI를 설정한다.
     /// </summary>
-    private void SetUIState(bool active)
+    private void SetUIState(
+        bool active)
     {
+        /*
+         * Smart Dust 모드 OFF
+         *
+         * 설정 UI와 현상 정보 UI를
+         * 모두 숨긴다.
+         */
+        if (!active)
+        {
+            if (smartDustPanel != null)
+            {
+                smartDustPanel.SetActive(
+                    false
+                );
+            }
+
+            if (phenomenonInfoUI != null)
+            {
+                phenomenonInfoUI.SetActive(
+                    false
+                );
+            }
+
+            return;
+        }
+
+
+        /*
+         * Smart Dust 모드 ON
+         *
+         * 현재 현상이 선택됐는지를 확인한다.
+         */
+        bool hasSelectedPhenomenon =
+            deploymentController != null &&
+            deploymentController.SelectedPhenomenon !=
+            PhenomenonType.None;
+
+
+        /*
+         * 현상이 선택되지 않은 상태:
+         *
+         * Smart Dust 설정 UI를 보여준다.
+         */
         if (smartDustPanel != null)
         {
-            smartDustPanel.SetActive(active);
+            smartDustPanel.SetActive(
+                !hasSelectedPhenomenon
+            );
         }
+
+
+        /*
+         * 현상이 선택된 상태:
+         *
+         * Smart Dust 설정 UI 대신
+         * PhenomenonInfoUI를 보여준다.
+         */
+        if (phenomenonInfoUI != null)
+        {
+            phenomenonInfoUI.SetActive(
+                hasSelectedPhenomenon
+            );
+        }
+
 
         if (phenomenonDropdown != null)
         {
@@ -339,31 +480,35 @@ public class SmartDustModeController : MonoBehaviour
 
 
     /// <summary>
-    /// Smart Dust 모드에 따라 마우스 커서를 설정한다.
+    /// 마우스 커서 상태 설정.
     /// </summary>
-    private void SetCursorState(bool active)
+    private void SetCursorState(
+        bool active)
     {
         if (active)
         {
             Cursor.lockState =
                 CursorLockMode.None;
 
-            Cursor.visible = true;
+            Cursor.visible =
+                true;
         }
         else
         {
             Cursor.lockState =
                 CursorLockMode.Locked;
 
-            Cursor.visible = false;
+            Cursor.visible =
+                false;
         }
     }
 
 
     /// <summary>
-    /// 로봇은 유지하고 Smart Dust 구체만 표시하거나 숨긴다.
+    /// Smart Dust Sphere 표시 상태 설정.
     /// </summary>
-    private void SetSmartDustSphereState(bool active)
+    private void SetSmartDustSphereState(
+        bool active)
     {
         if (smartDustController == null)
             return;
@@ -375,17 +520,22 @@ public class SmartDustModeController : MonoBehaviour
 
 
     /// <summary>
-    /// 현상 선택 Dropdown을 초기화한다.
+    /// Phenomenon Dropdown 초기화.
     /// </summary>
     private void SetupDropdown()
     {
         if (phenomenonDropdown == null)
             return;
 
-        phenomenonDropdown.onValueChanged
-            .RemoveListener(OnPhenomenonChanged);
+        phenomenonDropdown
+            .onValueChanged
+            .RemoveListener(
+                OnPhenomenonChanged
+            );
+
 
         phenomenonDropdown.ClearOptions();
+
 
         phenomenonDropdown.AddOptions(
             new List<string>
@@ -399,11 +549,20 @@ public class SmartDustModeController : MonoBehaviour
             }
         );
 
-        phenomenonDropdown.value = 0;
-        phenomenonDropdown.RefreshShownValue();
 
-        phenomenonDropdown.onValueChanged
-            .AddListener(OnPhenomenonChanged);
+        phenomenonDropdown.value =
+            0;
+
+        phenomenonDropdown
+            .RefreshShownValue();
+
+
+        phenomenonDropdown
+            .onValueChanged
+            .AddListener(
+                OnPhenomenonChanged
+            );
+
 
         OnPhenomenonChanged(
             phenomenonDropdown.value
@@ -412,17 +571,23 @@ public class SmartDustModeController : MonoBehaviour
 
 
     /// <summary>
-    /// 선택된 현상을 DeploymentController에 전달한다.
+    /// Dropdown에서 선택된 현상을
+    /// DeploymentController에 전달한다.
+    ///
+    /// 현상이 선택되면:
+    /// SmartDustPanel OFF
+    /// PhenomenonInfoUI ON
     /// </summary>
-    private void OnPhenomenonChanged(int index)
+    private void OnPhenomenonChanged(
+        int index)
     {
         if (deploymentController == null)
             return;
 
+
         if (!System.Enum.IsDefined(
                 typeof(PhenomenonType),
-                index
-            ))
+                index))
         {
             Debug.LogWarning(
                 $"[Smart Dust] 잘못된 현상 값: {index}",
@@ -432,18 +597,114 @@ public class SmartDustModeController : MonoBehaviour
             return;
         }
 
+
         PhenomenonType selectedPhenomenon =
             (PhenomenonType)index;
+
 
         deploymentController
             .SetSelectedPhenomenon(
                 selectedPhenomenon
             );
+
+
+        /*
+         * UI 상태도 선택된 현상에 맞게
+         * 즉시 갱신한다.
+         */
+        RefreshPhenomenonUIState();
+
+
+        Debug.Log(
+            $"[Smart Dust] Selected Phenomenon: " +
+            $"{selectedPhenomenon}",
+            this
+        );
     }
 
 
     /// <summary>
-    /// 현재 Origin을 UI 텍스트에 표시한다.
+    /// 현재 선택된 현상에 따라
+    /// SmartDustPanel / PhenomenonInfoUI를 전환한다.
+    /// </summary>
+    private void RefreshPhenomenonUIState()
+    {
+        if (!isSmartDustModeActive)
+        {
+            if (smartDustPanel != null)
+            {
+                smartDustPanel.SetActive(
+                    false
+                );
+            }
+
+            if (phenomenonInfoUI != null)
+            {
+                phenomenonInfoUI.SetActive(
+                    false
+                );
+            }
+
+            return;
+        }
+
+
+        bool hasSelectedPhenomenon =
+            deploymentController != null &&
+            deploymentController.SelectedPhenomenon !=
+            PhenomenonType.None;
+
+
+        if (smartDustPanel != null)
+        {
+            smartDustPanel.SetActive(
+                !hasSelectedPhenomenon
+            );
+        }
+
+
+        if (phenomenonInfoUI != null)
+        {
+            phenomenonInfoUI.SetActive(
+                hasSelectedPhenomenon
+            );
+        }
+    }
+
+
+    public void ReturnToPhenomenonSelection()
+    {
+        if (!isSmartDustModeActive)
+            return;
+
+        /*
+         * 선택된 현상은 유지한다.
+         *
+         * 예:
+         * Thermal Ignition 선택 상태라면
+         * SmartDustPanel로 돌아가도 Thermal Ignition 그대로 유지.
+         */
+
+        if (smartDustPanel != null)
+        {
+            smartDustPanel.SetActive(true);
+        }
+
+        if (phenomenonInfoUI != null)
+        {
+            phenomenonInfoUI.SetActive(false);
+        }
+
+        Debug.Log(
+            $"[Smart Dust] 설정 화면 복귀 | " +
+            $"Selected Phenomenon: " +
+            $"{deploymentController?.SelectedPhenomenon}",
+            this
+        );
+    }
+
+    /// <summary>
+    /// 현재 Origin 표시 갱신.
     /// </summary>
     private void RefreshOriginText()
     {
@@ -452,6 +713,7 @@ public class SmartDustModeController : MonoBehaviour
 
         if (deploymentController == null)
             return;
+
 
         originText.text =
             deploymentController.OriginMode ==
@@ -466,7 +728,11 @@ public class SmartDustModeController : MonoBehaviour
         if (phenomenonDropdown == null)
             return;
 
-        phenomenonDropdown.onValueChanged
-            .RemoveListener(OnPhenomenonChanged);
+
+        phenomenonDropdown
+            .onValueChanged
+            .RemoveListener(
+                OnPhenomenonChanged
+            );
     }
 }
