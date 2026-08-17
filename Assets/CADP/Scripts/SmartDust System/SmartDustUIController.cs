@@ -39,11 +39,11 @@ public class SmartDustUIController : MonoBehaviour
 
     // Slider가 사용할 최소 반경
     [SerializeField]
-    private float minimumRadius = 0.1f;
+    private float minimumRadius = 1f;
 
     // Slider가 사용할 최대 반경
     [SerializeField]
-    private float maximumRadius = 20f;
+    private float maximumRadius = 5f;
 
     private void Start()
     {

@@ -5,5 +5,6 @@ public enum PhenomenonType
     AirPressureGradient,
     ThermalIgnition,
     ElectricDischarge,
-    HeatExtraction
+    HeatExtraction,
+    KineticManipulation
 }

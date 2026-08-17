@@ -49,10 +49,10 @@ public class SmartDustDeploymentController : MonoBehaviour
     private float radius = 2f;
 
     [SerializeField]
-    private float minimumRadius = 0.1f;
+    private float minimumRadius = 1f;
 
     [SerializeField]
-    private float maximumRadius = 20f;
+    private float maximumRadius = 5f;
 
 
     [Header("Phenomenon")]

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -97,6 +98,12 @@ public class SmartDustModeController : MonoBehaviour
     [SerializeField]
     private bool isSmartDustModeActive;
 
+    [SerializeField]
+    private PhenomenonSettingsUIController
+    phenomenonSettingsUIController;
+
+    public event Action<bool>
+        OnSmartDustModeChanged;
 
     public bool IsSmartDustModeActive =>
         isSmartDustModeActive;
@@ -241,6 +248,14 @@ public class SmartDustModeController : MonoBehaviour
     {
         isSmartDustModeActive =
             active;
+
+        /*
+          Smart Dust 모드 상태가 변경되었음을
+          외부 시스템에게 알린다.
+        */
+        OnSmartDustModeChanged?.Invoke(
+            isSmartDustModeActive
+        );
 
         ApplyModeState();
 
@@ -404,77 +419,38 @@ public class SmartDustModeController : MonoBehaviour
     /// 현재 Smart Dust 모드와
     /// 현상 선택 상태를 기준으로 UI를 설정한다.
     /// </summary>
-    private void SetUIState(
-        bool active)
+    private void SetUIState(bool active)
     {
-        /*
-         * Smart Dust 모드 OFF
-         *
-         * 설정 UI와 현상 정보 UI를
-         * 모두 숨긴다.
-         */
         if (!active)
         {
             if (smartDustPanel != null)
             {
-                smartDustPanel.SetActive(
-                    false
-                );
+                smartDustPanel.SetActive(false);
             }
 
             if (phenomenonInfoUI != null)
             {
-                phenomenonInfoUI.SetActive(
-                    false
-                );
+                phenomenonInfoUI.SetActive(false);
             }
 
             return;
         }
 
-
-        /*
-         * Smart Dust 모드 ON
-         *
-         * 현재 현상이 선택됐는지를 확인한다.
-         */
-        bool hasSelectedPhenomenon =
-            deploymentController != null &&
-            deploymentController.SelectedPhenomenon !=
-            PhenomenonType.None;
-
-
-        /*
-         * 현상이 선택되지 않은 상태:
-         *
-         * Smart Dust 설정 UI를 보여준다.
-         */
+        // Smart Dust 모드를 새로 켰을 때는
+        // 항상 설정 화면부터 시작한다.
         if (smartDustPanel != null)
         {
-            smartDustPanel.SetActive(
-                !hasSelectedPhenomenon
-            );
+            smartDustPanel.SetActive(true);
         }
 
-
-        /*
-         * 현상이 선택된 상태:
-         *
-         * Smart Dust 설정 UI 대신
-         * PhenomenonInfoUI를 보여준다.
-         */
         if (phenomenonInfoUI != null)
         {
-            phenomenonInfoUI.SetActive(
-                hasSelectedPhenomenon
-            );
+            phenomenonInfoUI.SetActive(false);
         }
-
 
         if (phenomenonDropdown != null)
         {
-            phenomenonDropdown.interactable =
-                active;
+            phenomenonDropdown.interactable = true;
         }
     }
 
@@ -545,7 +521,8 @@ public class SmartDustModeController : MonoBehaviour
                 "Air Pressure Gradient",
                 "Thermal Ignition",
                 "Electric Discharge",
-                "Heat Extraction"
+                "Heat Extraction",
+                "Kinetic Manipulation"
             }
         );
 
@@ -606,6 +583,11 @@ public class SmartDustModeController : MonoBehaviour
             .SetSelectedPhenomenon(
                 selectedPhenomenon
             );
+
+        if (phenomenonSettingsUIController != null)
+        {
+            phenomenonSettingsUIController.Refresh();
+        }
 
 
         /*
@@ -678,12 +660,29 @@ public class SmartDustModeController : MonoBehaviour
             return;
 
         /*
-         * 선택된 현상은 유지한다.
-         *
-         * 예:
-         * Thermal Ignition 선택 상태라면
-         * SmartDustPanel로 돌아가도 Thermal Ignition 그대로 유지.
+         * SmartDustPanel로 돌아갈 때
+         * 현상 선택을 초기화한다.
          */
+        if (deploymentController != null)
+        {
+            deploymentController.SetSelectedPhenomenon(
+                PhenomenonType.None
+            );
+        }
+
+        /*
+         * Dropdown 표시도 None으로 되돌린다.
+         * SetValueWithoutNotify를 사용해서
+         * OnPhenomenonChanged가 중복 호출되지 않게 한다.
+         */
+        if (phenomenonDropdown != null)
+        {
+            phenomenonDropdown.SetValueWithoutNotify(
+                (int)PhenomenonType.None
+            );
+
+            phenomenonDropdown.RefreshShownValue();
+        }
 
         if (smartDustPanel != null)
         {
@@ -696,9 +695,7 @@ public class SmartDustModeController : MonoBehaviour
         }
 
         Debug.Log(
-            $"[Smart Dust] 설정 화면 복귀 | " +
-            $"Selected Phenomenon: " +
-            $"{deploymentController?.SelectedPhenomenon}",
+            "[Smart Dust] 현상 선택 화면 복귀 → 선택 초기화",
             this
         );
     }

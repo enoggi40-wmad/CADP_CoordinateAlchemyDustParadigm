@@ -319,6 +319,9 @@ public class PhenomenonInfoUI : MonoBehaviour
             case PhenomenonType.HeatExtraction:
                 return "Heat Extraction";
 
+            case PhenomenonType.KineticManipulation:
+                return "Kinetic Manipulation";
+
             default:
                 return "Unknown";
         }
