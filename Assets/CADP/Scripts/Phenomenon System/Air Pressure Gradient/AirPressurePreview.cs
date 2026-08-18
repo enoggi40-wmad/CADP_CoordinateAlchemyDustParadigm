@@ -5,26 +5,23 @@ using UnityEngine;
 ///
 /// 역할:
 /// 1. Smart Dust Sphere 위치를 따라간다.
-/// 2. Smart Dust Sphere 크기에 맞춰 공기관 전체 크기를 조절한다.
-/// 3. Air Pressure Length / Radius 값을 Preview Scale에 반영한다.
-/// 4. Length가 길어질수록 허용 가능한 Radius를 줄여
-///    공기관이 Smart Dust 영역 안에서 자연스럽게 보이도록 한다.
+/// 2. AirPressureGradientController의 Length / Radius 범위를
+///    비율값으로 변환한다.
+/// 3. Smart Dust의 실제 크기를 기준으로
+///    공기관 Preview 크기를 계산한다.
 ///
-/// 기준:
-/// Smart Dust Radius = 1
-/// Length = 1
-/// Radius = 1.3
-/// → 기본 공기관 크기
+/// Air Pressure의 실제 설정값과 범위는
+/// AirPressureGradientController가 유일하게 관리한다.
 /// </summary>
 public class AirPressurePreview : MonoBehaviour
 {
     [Header("References")]
 
-    [Tooltip("Air Pressure의 Length / Radius 값을 관리하는 컨트롤러")]
+    [Tooltip("Air Pressure 설정값과 범위를 관리하는 컨트롤러")]
     [SerializeField]
     private AirPressureGradientController controller;
 
-    [Tooltip("Smart Dust의 현재 Radius를 관리하는 컨트롤러")]
+    [Tooltip("Smart Dust의 실제 Radius를 관리하는 컨트롤러")]
     [SerializeField]
     private SmartDustDeploymentController deploymentController;
 
@@ -37,37 +34,21 @@ public class AirPressurePreview : MonoBehaviour
     private Transform smartDustSphere;
 
 
-    [Header("Base Scale")]
+    [Header("Mesh Scale Correction")]
 
-    [Tooltip("Length = 1일 때 공기관 길이 Scale")]
+    [Tooltip(
+        "계산된 실제 길이를 현재 Mesh의 X Scale로 " +
+        "변환하기 위한 모델 보정값"
+    )]
     [SerializeField]
-    private float baseLengthScale = 0.1f;
+    private float lengthMeshScaleFactor = 1f;
 
-    [Tooltip("Radius = 1.3일 때 공기관 굵기 Scale")]
+    [Tooltip(
+        "계산된 실제 반경을 현재 Mesh의 Y/Z Scale로 " +
+        "변환하기 위한 모델 보정값"
+    )]
     [SerializeField]
-    private float baseRadiusScale = 3f;
-
-
-    [Header("Length Settings")]
-
-    [Tooltip("Air Pressure Length 최소값")]
-    [SerializeField]
-    private float minimumLength = 1f;
-
-    [Tooltip("Air Pressure Length 최대값")]
-    [SerializeField]
-    private float maximumLength = 20f;
-
-
-    [Header("Radius Balance")]
-
-    [Tooltip("Length가 최소일 때 허용되는 최대 Radius")]
-    [SerializeField]
-    private float maxRadiusAtMinLength = 1.3f;
-
-    [Tooltip("Length가 최대일 때 허용되는 최대 Radius")]
-    [SerializeField]
-    private float maxRadiusAtMaxLength = 0.2f;
+    private float radiusMeshScaleFactor = 1f;
 
 
     private void Update()
@@ -78,8 +59,9 @@ public class AirPressurePreview : MonoBehaviour
 
 
     /// <summary>
-    /// Smart Dust Sphere와 Air Pressure 설정값을 기준으로
-    /// 공기관 Preview Scale을 갱신한다.
+    /// Smart Dust 크기와
+    /// Air Pressure의 현재 설정값을 이용해
+    /// 공기관 Preview Scale을 계산한다.
     /// </summary>
     private void UpdateTubeScale()
     {
@@ -92,117 +74,97 @@ public class AirPressurePreview : MonoBehaviour
 
 
         /*
-         * Smart Dust Sphere Radius.
+         * Smart Dust Radius는 실제 월드 반경.
          *
-         * 현재 범위:
-         * 1 ~ 5
-         *
-         * Sphere가 커질수록
-         * 공기관 전체 기본 크기도 같이 커진다.
+         * 예:
+         * Radius 1 → 반경 1m
+         * Radius 5 → 반경 5m
          */
         float smartDustRadius =
             deploymentController.Radius;
 
 
         /*
-         * 현재 Length가
-         * 1 ~ 20 범위에서 어느 정도인지
-         * 0 ~ 1 값으로 변환한다.
+         * Smart Dust Sphere의 실제 지름.
+         */
+        float smartDustDiameter =
+            smartDustRadius * 2f;
+
+
+        /*
+         * Controller가 관리하는 Length 범위를 기준으로
+         * 현재 Length가 어느 정도인지 0~1로 변환한다.
          *
-         * Length = 1  → 0
-         * Length = 20 → 1
+         * MinLength → 0
+         * MaxLength → 1
          */
         float lengthRatio =
             Mathf.InverseLerp(
-                minimumLength,
-                maximumLength,
+                controller.MinLength,
+                controller.MaxLength,
                 controller.Length
             );
 
 
         /*
-         * Length가 길어질수록
-         * 허용 가능한 최대 Radius를 줄인다.
+         * 현재 Length 비율을
+         * Smart Dust Sphere 지름에 적용한다.
          *
-         * 예:
-         * Length = 1
-         * → Radius 최대 1.3
-         *
-         * Length = 20
-         * → Radius 최대 0.2
+         * Length 최대
+         * → Sphere 지름 100% 사용
          */
-        float maxAllowedRadius =
-            Mathf.Lerp(
-                maxRadiusAtMinLength,
-                maxRadiusAtMaxLength,
-                lengthRatio
-            );
+        float actualTubeLength =
+            smartDustDiameter *
+            lengthRatio;
 
 
         /*
-         * 사용자가 설정한 Radius와
-         * 현재 Length에서 허용되는 최대 Radius 중
-         * 더 작은 값을 Preview에 사용한다.
-         *
-         * 실제 Controller.Radius 값 자체는 변경하지 않는다.
-         */
-        float previewRadius =
-            Mathf.Min(
-                controller.Radius,
-                maxAllowedRadius
-            );
-
-
-        /*
-         * Length Scale.
-         *
-         * Length = 1일 때
-         * baseLengthScale을 기준으로 한다.
-         *
-         * Smart Dust Sphere가 커지면
-         * 전체 Scale도 같이 커진다.
-         */
-        float targetLength =
-            controller.Length *
-            baseLengthScale *
-            smartDustRadius;
-
-
-        /*
-         * Radius Scale.
-         *
-         * Radius = 1.3을 기준 크기로 보고
-         * 현재 previewRadius가 몇 배인지 계산한다.
+         * Radius도 Controller 범위를 기준으로
+         * 0~1 비율값으로 변환한다.
          */
         float radiusRatio =
-            previewRadius /
-            maxRadiusAtMinLength;
+            Mathf.InverseLerp(
+                controller.MinRadius,
+                controller.MaxRadius,
+                controller.Radius
+            );
 
 
-        float targetRadius =
-            baseRadiusScale *
-            radiusRatio *
-            smartDustRadius;
+        /*
+         * 현재 Radius 비율을
+         * Smart Dust Sphere 반경에 적용한다.
+         *
+         * Radius 최대
+         * → Sphere 반경 100% 사용
+         */
+        float actualTubeRadius =
+            smartDustRadius *
+            radiusRatio;
 
 
+        /*
+         * 현재 Mesh 모델의 원본 크기가
+         * Unity 월드 1m와 정확히 일치하지 않을 수 있으므로
+         * 마지막에 Mesh 보정값을 적용한다.
+         */
         Vector3 scale =
             airTubeMesh.localScale;
 
 
-        /*
-         * 현재 모델 기준:
-         *
-         * X = Length
-         * Y/Z = 굵기
-         */
+        // 현재 모델 기준 X = 길이
         scale.x =
-            targetLength;
+            actualTubeLength *
+            lengthMeshScaleFactor;
 
+
+        // 현재 모델 기준 Y/Z = 반경
         scale.y =
-            targetRadius;
+            actualTubeRadius *
+            radiusMeshScaleFactor;
 
         scale.z =
-            targetRadius;
+            actualTubeRadius *
+            radiusMeshScaleFactor;
 
 
         airTubeMesh.localScale =
@@ -211,8 +173,8 @@ public class AirPressurePreview : MonoBehaviour
 
 
     /// <summary>
-    /// Air Pressure Preview를
-    /// Smart Dust Sphere 중심 위치에 맞춘다.
+    /// Air Pressure Preview 중심을
+    /// 현재 Smart Dust Sphere 중심 위치에 맞춘다.
     /// </summary>
     private void FollowSmartDustSphere()
     {

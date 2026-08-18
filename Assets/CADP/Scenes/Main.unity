@@ -993,7 +993,7 @@ RectTransform:
   m_Father: {fileID: 1806102289}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 20, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -1973,7 +1973,7 @@ RectTransform:
   m_Father: {fileID: 240856187}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 10, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -4445,7 +4445,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &613578435
 RectTransform:
   m_ObjectHideFlags: 0
@@ -5216,7 +5216,7 @@ RectTransform:
   m_Father: {fileID: 1502801359}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 20, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -5748,8 +5748,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PhenomenonSettingsUIController
   deploymentController: {fileID: 853041490}
-  thermalIgnitionPanel: {fileID: 0}
-  airPressureGradientPanel: {fileID: 0}
+  thermalIgnitionPanel: {fileID: 62207129}
+  airPressureGradientPanel: {fileID: 657441762}
 --- !u!1 &748747433
 GameObject:
   m_ObjectHideFlags: 0
@@ -8647,7 +8647,7 @@ RectTransform:
   m_Father: {fileID: 733139462}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 10, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -9439,12 +9439,8 @@ MonoBehaviour:
   deploymentController: {fileID: 853041490}
   airTubeMesh: {fileID: 543450653150715601}
   smartDustSphere: {fileID: 782265878}
-  baseLengthScale: 0.1
-  baseRadiusScale: 3
-  minimumLength: 0.1
-  maximumLength: 3
-  maxRadiusAtMinLength: 1.3
-  maxRadiusAtMaxLength: 0.2
+  lengthMeshScaleFactor: 0.5
+  radiusMeshScaleFactor: 3.5
 --- !u!114 &1279706857
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9459,8 +9455,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AirPressureRotationController
   airTubeMesh: {fileID: 543450653150715601}
   airPressurePreview: {fileID: 1279706854}
-  mouseRotationSpeed: 1.5
-  zRotationSpeed: 60
+  rotationSpeed: 60
 --- !u!1 &1287895429
 GameObject:
   m_ObjectHideFlags: 0
@@ -10169,7 +10164,7 @@ RectTransform:
   m_Father: {fileID: 50080076}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 20, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -10832,13 +10827,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e910f7b62355cc34eb385d35424eb420, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AirPressureGradientController
-  radius: 0.5
-  length: 8
+  radius: 1
+  length: 1
   pressure: 300
   duration: 0.5
   direction: {x: 0, y: 0, z: 1}
-  radiusRange: {x: 0.1, y: 5}
-  lengthRange: {x: 1, y: 20}
+  radiusRange: {x: 0, y: 5}
+  lengthRange: {x: 1, y: 10}
   pressureRange: {x: 10, y: 1000}
   durationRange: {x: 0.1, y: 10}
 --- !u!1 &1467898328
@@ -10945,7 +10940,7 @@ RectTransform:
   m_Father: {fileID: 187320638}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 10, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -11485,7 +11480,7 @@ RectTransform:
   m_Father: {fileID: 1810766717}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 20, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -13193,7 +13188,7 @@ RectTransform:
   m_Father: {fileID: 1287895430}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 10, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
